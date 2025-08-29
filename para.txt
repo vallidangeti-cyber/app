@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AirAware — AI powered solution for a cleaner future</title>
+  <link rel="preconnect" href="https://air-quality-api.open-meteo.com" crossorigin>
+  <link rel="preconnect" href="https://geocoding-api.open-meteo.com" crossorigin>
+  <style>
+    :root{
+      --bg: #0b1220;
+      --card: #121a2b;
+      --muted: #94a3b8;
+      --text: #e2e8f0;
+      --brand: #22d3ee; /* cyan */
+      --ring: #38bdf8;
+      --good:#22c55e; --moderate:#eab308; --usg:#f97316; --unhealthy:#ef4444; --very:#8b5cf6; --haz:#6b7280;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(1200px 600px at 70% -10%, #0e182b 0%, var(--bg) 40%), var(--bg);color:var(--text);font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+    header{position:sticky;top:0;backdrop-filter:saturate(1.2) blur(8px);background:linear-gradient(rgba(11,18,32,.8), rgba(11,18,32,.6));border-bottom:1px solid rgba(255,255,255,.06);}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px;}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.4px}
+    .brand svg{width:36px;height:36px}
+    .brand .name{font-size:1.25rem}
+    .tag{color:var(--muted);font-size:.9rem}
+    
+    .toolbar{display:grid;grid-template-columns:1fr auto auto;gap:10px;margin-top:14px}
+    .input{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:10px 14px}
+    .input input{flex:1;background:transparent;border:none;color:var(--text);font-size:1rem;outline:none}
+    .btn{background:linear-gradient(180deg, #1f9cff, #1273da);color:white;border:none;border-radius:14px;padding:10px 14px;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.secondary{background:#1f2937}
+    .btn:active{transform:translateY(1px)}
+    .grid{display:grid;gap:16px;margin-top:22px}
+    
+    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+    .card{background:linear-gradient(180deg, rgba(18,26,43,.9), rgba(18,26,43,.7));border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:18px;box-shadow:var(--shadow)}
+    .aqi-ring{display:flex;align-items:center;gap:18px}
+    .aqi-value{font-size:3.2rem;font-weight:900}
+    .chip{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:6px 12px;font-weight:700;border:1px solid rgba(255,255,255,.1)}
+    .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+    .meta div{background:#0e1524;border:1px solid rgba(255,255,255,.06);padding:10px;border-radius:14px;text-align:center}
+    .muted{color:var(--muted)}
+    .pollutants{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+    .p{background:#0e1524;border:1px solid rgba(255,255,255,.06);padding:12px;border-radius:14px}
+    .p .val{font-size:1.1rem;font-weight:800}
+    .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+    canvas{width:100%;height:260px;display:block}
+    footer{margin:40px 0;color:var(--muted);}
+    
+    @media (max-width: 900px){
+      .hero{grid-template-columns:1fr}
+      .pollutants{grid-template-columns:repeat(3,1fr)}
+      .meta{grid-template-columns:repeat(3,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">
+        <!-- AirAware logo mark (wind + AI spark) -->
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="64" y2="64"><stop stop-color="#22d3ee"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>
+          </defs>
+          <path d="M9 26c8-10 30-12 41-7" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
+          <path d="M9 39c9 6 28 9 38 2" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="50" cy="20" r="6" fill="#22d3ee"/>
+          <circle cx="50" cy="20" r="3" fill="#0b1220"/>
+        </svg>
+        <div>
+          <div class="name">AirAware</div>
+          <div class="tag">AI powered solution for a cleaner future</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="input"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input id="city" placeholder="Search a city (e.g., Puducherry, Delhi, Bengaluru)"/>
+        </div>
+        <button class="btn" id="searchBtn">Check air</button>
+        <button class="btn secondary" id="locBtn">Use my location</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid hero">
+      <div class="card">
+        <div class="aqi-ring">
+          <div>
+            <div class="muted">Current US AQI</div>
+            <div class="aqi-value" id="aqi">—</div>
+            <div class="chip" id="category">Waiting for data…</div>
+          </div>
+        </div>
+        <div class="meta">
+          <div><div class="muted">City</div><div id="cityName">—</div></div>
+          <div><div class="muted">Updated</div><div id="updated">—</div></div>
+          <div><div class="muted">Lat / Lon</div><div id="coords">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div>
+            <div style="font-weight:800">24‑hour air quality</div>
+            <div class="muted">US AQI (hourly)</div>
+          </div>
+          <div class="legend">
+            <span><i class="sw" style="background:var(--good)"></i>Good</span>
+            <span><i class="sw" style="background:var(--moderate)"></i>Moderate</span>
+            <span><i class="sw" style="background:var(--usg)"></i>USG</span>
+            <span><i class="sw" style="background:var(--unhealthy)"></i>Unhealthy</span>
+          </div>
+        </div>
+        <canvas id="chart" height="260"></canvas>
+      </div>
+    </section>
+
+    <section class="grid" style="grid-template-columns:1fr;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:800">Key pollutants</div>
+            <div class="muted">Latest hourly concentration</div>
+          </div>
+        </div>
+        <div class="pollutants" id="pollutants">
+          <!-- pollutant cards injected here -->
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">Health tips</div>
+        <ul id="tips" class="muted" style="margin-top:0;line-height:1.6">
+          <li>Search your city or use your location to see real‑time air quality.</li>
+          <li>When AQI is high, reduce outdoor activity and wear a mask if sensitive.</li>
+          <li>Keep indoor air clean: close windows, use air purifiers, avoid burning incense.</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>
+      Built with ❤ by <b>AirAware</b> — AI powered solution for a cleaner future.
+    </footer>
+  </main>
+
+  <script>
+    const el = id => document.getElementById(id);
+
+    const categoryForAQI = (aqi) => {
+      if (aqi == null || isNaN(aqi)) return {name: 'No data', color: 'var(--haz)'};
+      if (aqi <= 50) return {name:'Good', color:'var(--good)'};
+      if (aqi <= 100) return {name:'Moderate', color:'var(--moderate)'};
+      if (aqi <= 150) return {name:'Unhealthy for Sensitive Groups', color:'var(--usg)'};
+      if (aqi <= 200) return {name:'Unhealthy', color:'var(--unhealthy)'};
+      if (aqi <= 300) return {name:'Very Unhealthy', color:'var(--very)'};
+      return {name:'Hazardous', color:'var(--haz)'};
+    };
+
+    // Simple line chart without external libraries
+    function drawChart(canvas, data){
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+      const h = canvas.height = 260 * (window.devicePixelRatio || 1);
+      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      ctx.clearRect(0,0,w,h);
+      if(!data || !data.length){
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('No data', 12, 24);
+        return;
+      }
+      const max = Math.max(...data);
+      const min = Math.min(...data);
+      const pad = 24; const innerW = canvas.clientWidth - pad*2; const innerH = 220;
+      // grid
+      ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1;
+      for(let i=0;i<=4;i++){ const y=pad + (innerH/4)*i; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(pad+innerW,y); ctx.stroke(); }
+      // polyline
+      ctx.lineWidth = 2; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x = pad + innerW*(i/(data.length-1));
+        const y = pad + innerH - ((v-min)/(max-min||1))*innerH;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle = '#22d3ee'; ctx.stroke();
+      // dots
+      ctx.fillStyle = '#38bdf8';
+      data.forEach((v,i)=>{
+        const x = pad + innerW*(i/(data.length-1));
+        const y = pad + innerH - ((v-min)/(max-min||1))*innerH;
+        ctx.beginPath(); ctx.arc(x,y,2.5,0,Math.PI*2); ctx.fill();
+      });
+    }
+
+    async function geocodeCity(name){
+      const url = https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=en&format=json;
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('Geocoding failed');
+      const j = await r.json();
+      if(!j.results || !j.results.length) throw new Error('City not found');
+      const c = j.results[0];
+      return { name: ${c.name}${c.admin1?, ${c.admin1}:''}, ${c.country_code}, lat: c.latitude, lon: c.longitude };
+    }
+
+    async function fetchAir(lat, lon){
+      const url = https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10,carbon_monoxide,ozone,nitrogen_dioxide,sulphur_dioxide,us_aqi&timezone=auto;
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('Air quality request failed');
+      return await r.json();
+    }
+
+    function updateUI(place, data){
+      const hours = data.hourly?.time || [];
+      const aqiSeries = data.hourly?.us_aqi || [];
+      const latestIndex = aqiSeries.length ? aqiSeries.length - 1 : -1;
+      const latestAQI = latestIndex >= 0 ? Math.round(aqiSeries[latestIndex]) : null;
+
+      el('aqi').textContent = latestAQI ?? '—';
+      const cat = categoryForAQI(latestAQI);
+      const chip = el('category');
+      chip.textContent = cat.name;
+      chip.style.background = 'linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04))';
+      chip.style.borderColor = 'rgba(255,255,255,.15)';
+      chip.style.color = 'white';
+      chip.style.boxShadow = 0 0 0 4px ${cat.color}20;
+
+      el('cityName').textContent = place.name;
+      el('coords').textContent = ${place.lat.toFixed(3)}°, ${place.lon.toFixed(3)}°;
+      el('updated').textContent = latestIndex >= 0 ? new Date(hours[latestIndex]).toLocaleString() : '—';
+
+      // Draw chart for last 24 hours if available
+      const last24 = aqiSeries.slice(-24);
+      drawChart(el('chart'), last24);
+
+      // Pollutants
+      const polWrap = el('pollutants');
+      polWrap.innerHTML = '';
+      const items = [
+        {key:'pm2_5', label:'PM2.5', unit:'µg/m³'},
+        {key:'pm10', label:'PM10', unit:'µg/m³'},
+        {key:'ozone', label:'O₃', unit:'µg/m³'},
+        {key:'nitrogen_dioxide', label:'NO₂', unit:'µg/m³'},
+        {key:'sulphur_dioxide', label:'SO₂', unit:'µg/m³'},
+        {key:'carbon_monoxide', label:'CO', unit:'µg/m³'}
+      ];
+      items.forEach(({key,label,unit})=>{
+        const arr = data.hourly?.[key] || [];
+        const v = arr.length ? arr[arr.length-1] : null;
+        const div = document.createElement('div');
+        div.className = 'p';
+        div.innerHTML = <div class="muted">${label}</div><div class="val">${v==null?'—':v.toFixed(1)} <span class="muted" style="font-size:.9rem">${v==null?'':unit}</span></div>;
+        polWrap.appendChild(div);
+      });
+
+      // Tips based on category
+      const tips = el('tips');
+      const advice = {
+        'Good':['Enjoy outdoor activities.'],
+        'Moderate':['Sensitive groups should consider shorter outdoor exertion.'],
+        'Unhealthy for Sensitive Groups':['Wear a mask outside; keep medicines handy.'],
+        'Unhealthy':['Avoid outdoor exertion; prefer indoor spaces with clean air.'],
+        'Very Unhealthy':['Stay indoors with air filtration; avoid all outdoor activity.'],
+        'Hazardous':['Follow local health advisories; use N95 if you must go out.'],
+        'No data':['Try another city or retry.']
+      };
+      tips.innerHTML = (advice[cat.name]||[]).map(t=><li>${t}</li>).join('') + '<li class="muted">Data by Open‑Meteo</li>';
+    }
+
+    async function searchCity(){
+      const name = el('city').value.trim();
+      if(!name){ alert('Enter a city name'); return; }
+      try{
+        toggleLoading(true);
+        const place = await geocodeCity(name);
+        const data = await fetchAir(place.lat, place.lon);
+        updateUI(place, data);
+      }catch(err){
+        console.error(err);
+        alert(err.message || 'Something went wrong');
+      }finally{ toggleLoading(false); }
+    }
+
+    function toggleLoading(isLoading){
+      el('searchBtn').disabled = el('locBtn').disabled = !!isLoading;
+      el('searchBtn').textContent = isLoading ? 'Loading…' : 'Check air';
+    }
+
+    async function useMyLocation(){
+      if(!('geolocation' in navigator)) { alert('Geolocation not supported'); return; }
+      toggleLoading(true);
+      navigator.geolocation.getCurrentPosition(async (pos)=>{
+        try{
+          const lat = pos.coords.latitude; const lon = pos.coords.longitude;
+          const place = { name: 'My location', lat, lon };
+          const data = await fetchAir(lat, lon);
+          updateUI(place, data);
+        }catch(e){ alert('Could not fetch air data'); }
+        finally{ toggleLoading(false); }
+      }, (err)=>{ alert('Location denied'); toggleLoading(false); }, { enableHighAccuracy:true, timeout:10000 });
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      el('searchBtn').addEventListener('click', searchCity);
+      el('city').addEventListener('keydown', (e)=>{ if(e.key==='Enter') searchCity(); });
+      el('locBtn').addEventListener('click', useMyLocation);
+      // Sensible default
+      el('city').value = 'Puducherry';
+      searchCity();
+      window.addEventListener('resize', ()=> drawChart(el('chart'), []));
+    });
+  </script>
+</body>
+</html>
